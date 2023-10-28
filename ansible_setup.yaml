@@ -1,0 +1,66 @@
+---
+- hosts: aws_ec2
+  become: true
+  tasks:
+    - name: Updating repos
+      ansible.builtin.yum: 
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Installing Required Packages for Ansible
+      ansible.builtin.yum:
+        pkg:
+          - python3
+          - software-properties-common
+          - python3-pip
+
+    - name: Updating repos
+      ansible.builtin.yum: 
+        update_cache: yes
+        force_yum_get: yes
+        cache_valid_time: 3600
+
+    - name: Getting the Python Version
+      shell: python3 --version
+      register: Py_version
+    - debug: msg={{Py_version.stdout_lines}}
+
+    - name: adding ansible repository
+      ansible.builtin.yum_repository:
+        name: "ppa:ansible/ansible"
+
+    - name: Installing Ansible
+      ansible.builtin.yum:
+        name: ansible
+
+    - name: checking the ansible installation
+      shell: ansible --version
+      register: ansible_Version
+    - debug: msg={{ansible_Version.stdout_lines}}
+
+    - name: Adding user for Ansible
+      user:
+        name: ansadmin
+        password: ansadmin
+        state: present
+
+    - name: Adding the user to Sudo Group
+      lineinfile:
+        path: /etc/sudoers
+        line: "ansadmin ALL=(ALL) NOPASSWD: ALL"
+ 
+    - name: Rebooting the Ansible Server
+      reboot:
+        reboot_timeout: 6000
+
+- hosts: aws_ec2
+  become: true
+  vars:
+    pip_modules:
+      - boto3
+      - botocore
+  tasks:
+    - name: installing boto3 and BotoCore
+      shell: pip install {{ item }}
+      with_items: "{{ pip_modules }}"
+      
